@@ -1,44 +1,48 @@
 # -*- coding: utf-8 -*-
-# Author Keijo Korte / 24.08.2016
+# Author Keijo Korte / 25.08.2016
 
 import feedparser, time, os
 import cPickle as pickle
 from ParsedVuln import ParsedVuln
+import HelperTools
 from jira import JIRA
 
-URL = "https://www.viestintavirasto.fi/rss/haavoittuvuudet.xml"
+# Variables
+FEEDS = [ "https://www.viestintavirasto.fi/rss/haavoittuvuudet.xml", "https://www.wired.com/category/security/feed/" ]
 MOD_FILE = "modified.p"
 JIRA_URL = "http://localhost:8080"
 JIRA_OPTIONS = { 'server': JIRA_URL }
 JIRA_USER = "api"
 JIRA_PASSWD = "apina123!"
 JIRA_PROJECT = 10000
-JIRA_DEF_PRIO = "High"
 
-def getFeed(url,modi):
+def getFeed(url,modi,seq):
+  ''' Get feed from url '''
   f = feedparser.parse(url, modified=modi)
   if f.status == 200:
     vuln = ParsedVuln(f.entries[0].title,f.entries[0].link,f.entries[0].description)
-    setModi(f.modified)
+    setModi(f.modified,seq)
     return vuln
   if f.status == 304:
     return None
   else:
-    print "Perkele"
+    HelperTools.notifyAdmins(f.status)
+    return None
 
-def getModi():
+def getModi(seq):
+    ''' Get modified timestamp from pickled file '''
     try:
-      if not os.path.exists(MOD_FILE):
+      if not os.path.exists(MOD_FILE+seq):
         fakeTime = "Tue, 05 Oct 2016 06:36:06 GMT"
-        with open(MOD_FILE, 'wb') as f:
+        with open(MOD_FILE+seq, 'wb') as f:
           pickle.dump(fakeTime, f)
           f.close()
-        with open(MOD_FILE, 'rb') as f:
+        with open(MOD_FILE+seq, 'rb') as f:
           modi =  pickle.load(f)
           f.close()
           return modi
       else:
-        with open(MOD_FILE, 'rb') as f:
+        with open(MOD_FILE+seq, 'rb') as f:
           modi = pickle.load(f)
           f.close()
           return modi
@@ -46,31 +50,44 @@ def getModi():
       print "Error: " + str(e)
       return None 
 
-def setModi(modi):
-    with open('modified.p', 'wb') as f:
+def setModi(modi,seq):
+    ''' Add modified timestamp to the file '''
+    with open(MOD_FILE+seq, 'wb') as f:
       pickle.dump(modi, f)
       f.close()
 
 def createJiraTicket(vuln):
-    jira = JIRA(JIRA_OPTIONS, basic_auth=(JIRA_USER, JIRA_PASSWD))
-
+    ''' Create JIRA ticket '''
     issue_dict = {
       'project': {'id': JIRA_PROJECT},
       'summary': vuln.getTitle(),
-      'description': vuln.getDesc(),
-      'priority': {'name': JIRA_DEF_PRIO},
-      'issuetype': {'name': 'Task'},
+      'description': vuln.getDesc()+"\n\n"+vuln.getLink(),
+      'priority': {'name': vuln.getPrio()},
+      'issuetype': {'name': vuln.getIssueType()},
+      'components': [{'name': vuln.getComponent()}]
     }
-    issue = jira.create_issue(fields=issue_dict)
-    print "Creating JIRA ticket: " + str(issue)
+
+    try:
+      jira = JIRA(JIRA_OPTIONS, basic_auth=(JIRA_USER, JIRA_PASSWD))
+      issue = jira.create_issue(fields=issue_dict)
+      print "Creating JIRA ticket"
+      print "Ticket " + str(issue) + " created"
+    except Exception as e:
+      print "Failed to create a ticket"
+      print e
+      HelperTools.notifyAdmins(e)
 
 def main():
-  feed = getFeed(URL,getModi())
-  if feed is None:
-    print "None"
-  else:
-    print "New vulnerabilities"
-    print feed.getTitle() + " - " + feed.getLink()
-    createJiraTicket(feed)
+  ''' Main program. Loop's through FEEDS array '''
+  j = 1
+  for i in FEEDS:
+    feed = getFeed(i,getModi(str(j)),str(j))
+    j = j+1
+    if feed is None:
+      pass
+    else:
+      print "New vulnerabilities"
+      print feed.getTitle() + " - " + feed.getLink()
+      createJiraTicket(feed)
     
 if __name__ == "__main__": main()
