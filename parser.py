@@ -64,7 +64,8 @@ def createJiraTicket(vuln):
       'description': vuln.getDesc()+"\n\n"+vuln.getLink(),
       'priority': {'name': vuln.getPrio()},
       'issuetype': {'name': vuln.getIssueType()},
-      'components': [{'name': vuln.getComponent()}]
+      'components': [{'name': vuln.getComponent()}],
+      'customfield_10007': {'value': vuln.getSeverity()}
     }
 
     try:
