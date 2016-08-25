@@ -19,13 +19,14 @@ JIRA_PROJECT = 10000
 def getFeed(url,modi,seq):
   ''' Get feed from url '''
   f = feedparser.parse(url, modified=modi)
-  if f.status == 200:
+  if f.status == 200 and f.version == 'rss20':
     vuln = ParsedVuln(f.entries[0].title,f.entries[0].link,f.entries[0].description)
     setModi(f.modified,seq)
     return vuln
   if f.status == 304:
     return None
   else:
+    print "Error. Can't fetch feed from " + url
     HelperTools.notifyAdmins(f.status)
     return None
 
@@ -72,7 +73,7 @@ def createJiraTicket(vuln):
       jira = JIRA(JIRA_OPTIONS, basic_auth=(JIRA_USER, JIRA_PASSWD))
       issue = jira.create_issue(fields=issue_dict)
       print "Creating JIRA ticket"
-      print "Ticket " + str(issue) + " created"
+      print "Ticket " + str(issue) + " created\n"
     except Exception as e:
       print "Failed to create a ticket"
       print e
