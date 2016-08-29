@@ -8,14 +8,13 @@ import HelperTools
 from jira import JIRA
 
 # Variables
-#FEEDS = [ "https://www.viestintavirasto.fi/rss/haavoittuvuudet.xml", "https://www.wired.com/category/security/feed/", "https://nvd.nist.gov/download/nvd-rss-analyzed.xml", "https://threatpost.com/feed/"]
 FEEDS = [ "https://www.viestintavirasto.fi/rss/haavoittuvuudet.xml"]
 MOD_FILE = "modified.p"
-JIRA_URL = "http://localhost:8080"
+JIRA_URL = "https://SERVER"
 JIRA_OPTIONS = { 'server': JIRA_URL }
-JIRA_USER = "api"
-JIRA_PASSWD = "apina123!"
-JIRA_PROJECT = 10000
+JIRA_USER = "USER"
+JIRA_PASSWD = "PASSWORD"
+JIRA_PROJECT = 123456
 
 def getFeed(url,modi,seq):
   ''' Get feed from url '''
@@ -50,7 +49,7 @@ def getModi(seq):
           return modi
     except IOError, e:
       print "Error: " + str(e)
-      return None 
+      return None
 
 def setModi(modi,seq):
     ''' Add modified timestamp to the file '''
@@ -61,7 +60,7 @@ def setModi(modi,seq):
 def createJiraTicket(vuln):
     ''' Create JIRA ticket '''
     issue_dict = {
-      'project': {'id': JIRA_PROJECT},
+      'project': {'name': JIRA_PROJECT},
       'summary': vuln.getTitle(),
       'description': vuln.getDesc()+"\n\n"+vuln.getLink(),
       'priority': {'name': vuln.getPrio()},
@@ -72,7 +71,8 @@ def createJiraTicket(vuln):
 
     try:
       jira = JIRA(JIRA_OPTIONS, basic_auth=(JIRA_USER, JIRA_PASSWD))
-      issue = jira.create_issue(fields=issue_dict)
+      issue = jira.create_issue(project="PLATTA", summary=vuln.getTitle(), description=vuln.getDesc()+"\n\n"+vuln.getLink(), issuetype={'name': 'Defect'}, components=[{'name': vuln.getComponent()}], customfield_10001={'value': vuln.getPhaseId()})
+      #issue = jira.create_issue(fields=issue_dict)
       print "Creating JIRA ticket"
       print "Ticket " + str(issue) + " created\n"
     except Exception as e:
@@ -92,5 +92,5 @@ def main():
       print "New vulnerabilities"
       print feed.getTitle() + " - " + feed.getLink()
       createJiraTicket(feed)
-    
+
 if __name__ == "__main__": main()
