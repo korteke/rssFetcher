@@ -7,9 +7,10 @@ class ParsedVuln:
   desc = ""
   prio = "Medium"
   severity = "Medium"
-  component = "vuln_mgmt"
+  component = "VulnMgmt"
   issueType = "Task"
-  
+  phaseId = "security test"
+
   def __init__(self, title, link, desc):
     self.title = title
     self.link = link
@@ -35,3 +36,6 @@ class ParsedVuln:
 
   def getIssueType(self):
     return self.issueType
+
+  def getPhaseId(self):
+    return self.phaseId
